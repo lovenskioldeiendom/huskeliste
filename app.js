@@ -254,7 +254,7 @@ async function loadCal() {
   if (!S.hh) return;
   if (!S.cal) $('cal').innerHTML = '<p class="empty">Henter kalenderen…</p>';
   try {
-    S.cal = { ...(await S.store.calendar(S.hh.id, 21)), at: Date.now() };
+    S.cal = { ...(await S.store.calendar(S.hh.id, CAL_DAYS)), at: Date.now() };
     S.calLoaded = Date.now();
     ls.set('hl-cal', S.cal);
     renderCal();
@@ -275,19 +275,13 @@ function dayLabel(key) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 const hm = (d) => d.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' });
-function renderCal() {
-  const box = $('cal');
-  if (!S.cal) return;
-  if (S.cal.missing) {
-    box.innerHTML = `<div class="card empty-card"><p>Koble til familiekalenderen ved å lime inn den hemmelige iCal-adressen i innstillingene.</p>
-      <button class="btn primary" id="cal-setup">Åpne innstillinger</button></div>`;
-    $('cal-setup').onclick = openSettings; return;
-  }
+const CAL_DAYS = 60; // så langt fram kalenderfunksjonen henter
+function calDays() {
   // Fordel avtaler på dager (heldagsavtaler over flere dager vises hver dag)
   const days = new Map();
   const todayKey = dayKey(new Date());
   const add = (k, ev) => { if (k < todayKey) return; if (!days.has(k)) days.set(k, []); days.get(k).push(ev); };
-  for (const ev of S.cal.events || []) {
+  for (const ev of S.cal?.events || []) {
     if (ev.allDay) {
       const d = new Date(ev.start + 'T12:00:00'), end = new Date((ev.end || ev.start) + 'T12:00:00');
       do { add(dayKey(d), ev); d.setDate(d.getDate() + 1); } while (d < end);
@@ -297,14 +291,77 @@ function renderCal() {
       add(dayKey(s), ev);
     }
   }
-  if (!days.size) { box.innerHTML = '<p class="empty">Ingen avtaler de neste tre ukene.</p>'; return; }
-  const keys = [...days.keys()].sort();
-  box.innerHTML = keys.map((k) => `<h4 class="cal-day${k === todayKey ? ' today' : ''}">${esc(dayLabel(k))}</h4>
-    <ul class="cal-list card">${days.get(k).map((ev) => `<li>
+  return days;
+}
+const evListHTML = (evs) => `<ul class="cal-list card">${evs.map((ev) => `<li>
       <span class="cal-time">${ev.allDay ? 'Hele dagen' : hm(new Date(ev.start))}</span>
       <span class="cal-title">${esc(ev.title)}${ev.location ? `<small>${esc(ev.location)}</small>` : ''}</span>
-    </li>`).join('')}</ul>`).join('')
-    + `<p class="hint center-text">Oppdatert ${hm(new Date(S.cal.at || Date.now()))}${S.cal.demo ? ' · demodata' : ''}</p>`;
+    </li>`).join('')}</ul>`;
+
+S.calView = ls.get('hl-calview', 'liste');
+S.calMonth = 0; // 0 = denne måneden
+S.calSel = null;
+function renderCal() {
+  const box = $('cal');
+  if (!S.cal) return;
+  if (S.cal.missing) {
+    box.innerHTML = `<div class="card empty-card"><p>Koble til familiekalenderen ved å lime inn den hemmelige iCal-adressen i innstillingene.</p>
+      <button class="btn primary" id="cal-setup">Åpne innstillinger</button></div>`;
+    $('cal-setup').onclick = openSettings; return;
+  }
+  const days = calDays();
+  const todayKey = dayKey(new Date());
+  const seg = `<div class="seg cal-seg">
+    <button class="seg-btn${S.calView === 'liste' ? ' active' : ''}" data-view="liste">Liste</button>
+    <button class="seg-btn${S.calView === 'maned' ? ' active' : ''}" data-view="maned">Måned</button></div>`;
+  const foot = `<p class="hint center-text">Viser to måneder fram · oppdatert ${hm(new Date(S.cal.at || Date.now()))}${S.cal.demo ? ' · demodata' : ''}</p>`;
+
+  let body;
+  if (S.calView === 'maned') {
+    const now = new Date();
+    const first = new Date(now.getFullYear(), now.getMonth() + S.calMonth, 1);
+    const last = new Date(now.getFullYear(), now.getMonth() + S.calMonth + 1, 0);
+    const limit = new Date(); limit.setDate(limit.getDate() + CAL_DAYS);
+    const canNext = new Date(first.getFullYear(), first.getMonth() + 1, 1) < limit;
+    const title = first.toLocaleDateString('nb-NO', { month: 'long', year: 'numeric' });
+    const lead = (first.getDay() + 6) % 7; // mandag først
+    let cells = '';
+    for (let i = 0; i < lead; i++) cells += '<span class="mc empty"></span>';
+    for (let d = 1; d <= last.getDate(); d++) {
+      const k = dayKey(new Date(first.getFullYear(), first.getMonth(), d));
+      const evs = days.get(k) || [];
+      const past = k < todayKey;
+      const cls = ['mc', past && 'past', k === todayKey && 'today', k === S.calSel && 'sel', evs.length && 'has'].filter(Boolean).join(' ');
+      cells += `<button class="${cls}" data-day="${k}"${past ? ' disabled' : ''}><span class="mn">${d}</span>${
+        evs.slice(0, 2).map((e) => `<span class="mt">${esc(e.title)}</span>`).join('')}${evs.length > 2 ? `<span class="mm">+${evs.length - 2}</span>` : ''}</button>`;
+    }
+    const sel = S.calSel && S.calSel >= dayKey(first) && S.calSel <= dayKey(last) ? S.calSel : null;
+    const selEvs = sel ? days.get(sel) || [] : [];
+    body = `<div class="month card">
+        <div class="month-head">
+          <button class="icon-btn" id="m-prev" ${S.calMonth <= 0 ? 'disabled' : ''} aria-label="Forrige måned">‹</button>
+          <b>${esc(title.charAt(0).toUpperCase() + title.slice(1))}</b>
+          <button class="icon-btn" id="m-next" ${canNext ? '' : 'disabled'} aria-label="Neste måned">›</button>
+        </div>
+        <div class="mgrid">${['ma', 'ti', 'on', 'to', 'fr', 'lø', 'sø'].map((w) => `<span class="wd">${w}</span>`).join('')}${cells}</div>
+      </div>
+      ${sel ? `<h4 class="cal-day">${esc(dayLabel(sel))}</h4>${selEvs.length ? evListHTML(selEvs) : '<p class="empty small">Ingen avtaler denne dagen.</p>'}`
+        : '<p class="hint center-text">Trykk på en dag for å se avtalene.</p>'}`;
+  } else if (!days.size) {
+    body = '<p class="empty">Ingen avtaler de neste to månedene.</p>';
+  } else {
+    body = [...days.keys()].sort().map((k) => `<h4 class="cal-day${k === todayKey ? ' today' : ''}">${esc(dayLabel(k))}</h4>${evListHTML(days.get(k))}`).join('');
+  }
+  box.innerHTML = seg + body + foot;
+
+  box.querySelectorAll('[data-view]').forEach((b) => b.onclick = () => { S.calView = b.dataset.view; ls.set('hl-calview', S.calView); renderCal(); });
+  box.querySelectorAll('[data-day]').forEach((b) => b.onclick = () => {
+    S.calSel = b.dataset.day; renderCal();
+    document.querySelector('.month + .cal-day')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+  const pv = $('m-prev'), nx = $('m-next');
+  if (pv) pv.onclick = () => { S.calMonth = Math.max(0, S.calMonth - 1); renderCal(); };
+  if (nx) nx.onclick = () => { S.calMonth++; renderCal(); };
 }
 
 // ---------- Innstillinger ----------
