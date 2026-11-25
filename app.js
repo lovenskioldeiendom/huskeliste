@@ -281,7 +281,13 @@ function calDays() {
   const days = new Map();
   const todayKey = dayKey(new Date());
   const add = (k, ev) => { if (k < todayKey) return; if (!days.has(k)) days.set(k, []); days.get(k).push(ev); };
-  for (const ev of S.cal?.events || []) {
+  const feed = S.cal?.events || [];
+  const same = (a, b) => a.title.trim().toLowerCase() === b.title.trim().toLowerCase()
+    && (a.allDay ? a.start === b.start : Math.abs(new Date(a.start) - new Date(b.start)) < 60e3);
+  // Nye avtaler fra appen vises til Google har tatt dem med (maks ett døgn)
+  const pending = ls.get('hl-pending', []).filter((p) => Date.now() - p.created < 864e5 && !feed.some((f) => same(f, p)));
+  ls.set('hl-pending', pending);
+  for (const ev of [...feed, ...pending]) {
     if (ev.allDay) {
       const d = new Date(ev.start + 'T12:00:00'), end = new Date((ev.end || ev.start) + 'T12:00:00');
       do { add(dayKey(d), ev); d.setDate(d.getDate() + 1); } while (d < end);
@@ -291,11 +297,12 @@ function calDays() {
       add(dayKey(s), ev);
     }
   }
+  for (const list of days.values()) list.sort((a, b) => (a.allDay ? 0 : 1) - (b.allDay ? 0 : 1) || (a.start < b.start ? -1 : 1));
   return days;
 }
 const evListHTML = (evs) => `<ul class="cal-list card">${evs.map((ev) => `<li>
       <span class="cal-time">${ev.allDay ? 'Hele dagen' : hm(new Date(ev.start))}</span>
-      <span class="cal-title">${esc(ev.title)}${ev.location ? `<small>${esc(ev.location)}</small>` : ''}</span>
+      <span class="cal-title">${esc(ev.title)}${ev.location ? `<small>${esc(ev.location)}</small>` : ''}${ev.pending ? '<small class="pend">Lagt til fra appen · venter på Google</small>' : ''}</span>
     </li>`).join('')}</ul>`;
 
 S.calView = ls.get('hl-calview', 'liste');
@@ -314,7 +321,8 @@ function renderCal() {
   const seg = `<div class="seg cal-seg">
     <button class="seg-btn${S.calView === 'liste' ? ' active' : ''}" data-view="liste">Liste</button>
     <button class="seg-btn${S.calView === 'maned' ? ' active' : ''}" data-view="maned">Måned</button></div>`;
-  const foot = `<p class="hint center-text">Viser to måneder fram · oppdatert ${hm(new Date(S.cal.at || Date.now()))}${S.cal.demo ? ' · demodata' : ''}</p>`;
+  const foot = `<p class="hint center-text">Viser to måneder fram · oppdatert ${hm(new Date(S.cal.at || Date.now()))}${S.cal.demo ? ' · demodata' : ''}
+    · <button class="link inline" id="cal-refresh">Oppdater nå</button></p>`;
 
   let body;
   if (S.calView === 'maned') {
@@ -359,6 +367,7 @@ function renderCal() {
     S.calSel = b.dataset.day; renderCal();
     document.querySelector('.month + .cal-day')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
+  $('cal-refresh').onclick = () => { toast('Henter kalenderen…', 1500); loadCal(); };
   const pv = $('m-prev'), nx = $('m-next');
   if (pv) pv.onclick = () => { S.calMonth = Math.max(0, S.calMonth - 1); renderCal(); };
   if (nx) nx.onclick = () => { S.calMonth++; renderCal(); };
@@ -429,6 +438,17 @@ $('event-form').onsubmit = (e) => {
   const p = new URLSearchParams({ action: 'TEMPLATE', text: $('ev-title').value.trim(), dates, ctz: 'Europe/Oslo' });
   const loc = $('ev-loc').value.trim(); if (loc) p.set('location', loc);
   const cal = calendarIdFromIcal(S.hh?.ical_url); if (cal) p.set('src', cal);
+  // Vis avtalen i appen med en gang, til den dukker opp i Google-kalenderen
+  const allDay = $('ev-allday').checked;
+  const toIso = (dt) => new Date(dt).toISOString();
+  const pend = {
+    title: $('ev-title').value.trim(), location: loc, allDay, pending: true, created: Date.now(),
+    start: allDay ? $('ev-date').value : toIso(`${$('ev-date').value}T${$('ev-from').value || '12:00'}`),
+    end: allDay ? dayKey(new Date(new Date($('ev-date').value + 'T12:00:00').getTime() + 864e5))
+      : toIso(`${$('ev-date').value}T${$('ev-to').value || $('ev-from').value || '13:00'}`),
+  };
+  ls.set('hl-pending', [...ls.get('hl-pending', []), pend]);
+  renderCal();
   $('event-dlg').close();
   S.calLoaded = 0; // hent kalenderen på nytt når du kommer tilbake
   window.open('https://calendar.google.com/calendar/render?' + p.toString(), '_blank');
