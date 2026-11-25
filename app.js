@@ -275,7 +275,8 @@ function dayLabel(key) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 const hm = (d) => d.toLocaleTimeString('nb-NO', { hour: '2-digit', minute: '2-digit' });
-const CAL_DAYS = 60; // så langt fram kalenderfunksjonen henter
+const CAL_DAYS = 365; // så langt fram appen ber om (eldre kalenderfunksjon gir bare 60)
+const calRange = () => S.cal?.days || (S.cal?.demo ? CAL_DAYS : 60);
 function calDays() {
   // Fordel avtaler på dager (heldagsavtaler over flere dager vises hver dag)
   const days = new Map();
@@ -321,7 +322,7 @@ function renderCal() {
   const seg = `<div class="seg cal-seg">
     <button class="seg-btn${S.calView === 'liste' ? ' active' : ''}" data-view="liste">Liste</button>
     <button class="seg-btn${S.calView === 'maned' ? ' active' : ''}" data-view="maned">Måned</button></div>`;
-  const foot = `<p class="hint center-text">Viser to måneder fram · oppdatert ${hm(new Date(S.cal.at || Date.now()))}${S.cal.demo ? ' · demodata' : ''}
+  const foot = `<p class="hint center-text">Viser ${calRange() >= 300 ? 'ett år' : 'to måneder'} fram · oppdatert ${hm(new Date(S.cal.at || Date.now()))}${S.cal.demo ? ' · demodata' : ''}
     · <button class="link inline" id="cal-refresh">Oppdater nå</button></p>`;
 
   let body;
@@ -329,7 +330,7 @@ function renderCal() {
     const now = new Date();
     const first = new Date(now.getFullYear(), now.getMonth() + S.calMonth, 1);
     const last = new Date(now.getFullYear(), now.getMonth() + S.calMonth + 1, 0);
-    const limit = new Date(); limit.setDate(limit.getDate() + CAL_DAYS);
+    const limit = new Date(); limit.setDate(limit.getDate() + calRange());
     const canNext = new Date(first.getFullYear(), first.getMonth() + 1, 1) < limit;
     const title = first.toLocaleDateString('nb-NO', { month: 'long', year: 'numeric' });
     const lead = (first.getDay() + 6) % 7; // mandag først
@@ -356,7 +357,7 @@ function renderCal() {
       ${sel ? `<h4 class="cal-day">${esc(dayLabel(sel))}</h4>${selEvs.length ? evListHTML(selEvs) : '<p class="empty small">Ingen avtaler denne dagen.</p>'}`
         : '<p class="hint center-text">Trykk på en dag for å se avtalene.</p>'}`;
   } else if (!days.size) {
-    body = '<p class="empty">Ingen avtaler de neste to månedene.</p>';
+    body = '<p class="empty">Ingen kommende avtaler.</p>';
   } else {
     body = [...days.keys()].sort().map((k) => `<h4 class="cal-day${k === todayKey ? ' today' : ''}">${esc(dayLabel(k))}</h4>${evListHTML(days.get(k))}`).join('');
   }

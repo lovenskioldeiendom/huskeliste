@@ -36,10 +36,10 @@ Deno.serve(async (req) => {
     if (!res.ok) return json({ error: `Kalenderen svarte ${res.status}. Sjekk iCal-adressen.` }, 502);
     const text = await res.text();
 
-    const days = Math.min(Math.max(Number(body.days) || 14, 1), 60);
+    const days = Math.min(Math.max(Number(body.days) || 14, 1), 400);
     const from = new Date(); from.setHours(0, 0, 0, 0);
     const to = new Date(from.getTime() + days * 86400000);
-    return json({ events: expand(ICAL, text, from, to) });
+    return json({ events: expand(ICAL, text, from, to), days });
   } catch (e) {
     return json({ error: String((e as Error)?.message ?? e) }, 500);
   }
