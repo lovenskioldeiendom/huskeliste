@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="nb">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Huskeliste</title>
+  <meta name="theme-color" content="#f5f7f4" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#161a17" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Huskeliste">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Innlogging -->
+  <section id="view-login" class="view center" hidden>
+    <div class="logo-big" aria-hidden="true">🛒</div>
+    <h1>Huskeliste</h1>
+    <p class="muted">Felles handleliste og gjøremål.</p>
+    <form id="login-form" class="card stack">
+      <label>E-post<input type="email" id="login-email" autocomplete="username" required></label>
+      <label>Passord<input type="password" id="login-password" autocomplete="current-password" required minlength="6"></label>
+      <button type="submit" class="btn primary" id="login-submit">Logg inn</button>
+      <button type="button" class="btn ghost" id="login-toggle">Ny bruker? Lag konto</button>
+      <p class="hint">Har du konto i matdagboken, kan du bruke den samme.</p>
+      <p class="error" id="login-error" hidden></p>
+    </form>
+  </section>
+
+  <!-- Første gang: lag eller bli med i en husstand -->
+  <section id="view-setup" class="view center" hidden>
+    <div class="logo-big" aria-hidden="true">🏡</div>
+    <h1>Sett opp felles liste</h1>
+    <form id="setup-form" class="card stack">
+      <label>Ditt navn<input id="setup-name" autocomplete="given-name" placeholder="F.eks. Magnus" required></label>
+      <div class="seg" role="tablist">
+        <button type="button" class="seg-btn active" data-mode="new">Lag ny liste</button>
+        <button type="button" class="seg-btn" data-mode="join">Jeg har en kode</button>
+      </div>
+      <label id="setup-hh-wrap">Navn på lista<input id="setup-hh" placeholder="Hjemme" value="Hjemme"></label>
+      <label id="setup-code-wrap" hidden>Kode fra den andre<input id="setup-code" autocapitalize="characters" autocomplete="off" placeholder="ABC123" maxlength="6"></label>
+      <button type="submit" class="btn primary" id="setup-submit">Lag liste</button>
+      <p class="error" id="setup-error" hidden></p>
+    </form>
+    <button class="btn ghost small" id="setup-logout">Logg ut</button>
+  </section>
+
+  <!-- Hovedvisning -->
+  <section id="view-main" class="view" hidden>
+    <header class="topbar">
+      <h2 id="title">Handle</h2>
+      <span class="sync" id="sync" title="Synkronisert">●</span>
+      <button class="icon-btn" id="open-settings" aria-label="Innstillinger">⚙︎</button>
+    </header>
+
+    <div id="pane-list">
+      <form id="add-form" class="add">
+        <input id="add-input" placeholder="Legg til…" autocomplete="off" enterkeyhint="done" maxlength="200">
+        <button class="add-btn" aria-label="Legg til">+</button>
+      </form>
+      <div id="suggest" class="suggest" hidden></div>
+      <ul id="items" class="items"></ul>
+      <p id="empty" class="empty" hidden></p>
+      <div id="done-wrap" hidden>
+        <div class="done-head">
+          <button class="link" id="done-toggle"></button>
+          <button class="link danger" id="clear-done">Fjern avkryssede</button>
+        </div>
+        <ul id="done-items" class="items done" hidden></ul>
+      </div>
+    </div>
+
+    <div id="pane-cal" hidden>
+      <div id="cal"></div>
+    </div>
+  </section>
+
+  <nav class="tabbar" id="tabbar" hidden>
+    <button class="tab active" data-tab="handle"><span>🛒</span>Handle<b class="badge" id="badge-handle"></b></button>
+    <button class="tab" data-tab="gjore"><span>✅</span>Gjøre<b class="badge" id="badge-gjore"></b></button>
+    <button class="tab" data-tab="kalender"><span>📅</span>Kalender</button>
+  </nav>
+
+  <!-- Innstillinger -->
+  <dialog id="settings" class="sheet">
+    <form method="dialog" class="sheet-head"><h3>Innstillinger</h3><button class="icon-btn" aria-label="Lukk">✕</button></form>
+    <div class="stack">
+      <div class="card stack">
+        <div class="row"><span class="muted">Liste</span><b id="set-hh"></b></div>
+        <div class="row"><span class="muted">Medlemmer</span><span id="set-members"></span></div>
+        <div class="row"><span class="muted">Invitasjonskode</span><b class="code" id="set-code"></b></div>
+        <button class="btn" id="share-code">Send koden til den andre</button>
+        <p class="hint">Den andre lager konto i appen, velger «Jeg har en kode» og skriver inn koden.</p>
+      </div>
+      <div class="card stack">
+        <b>Familiekalender</b>
+        <label>Hemmelig iCal-adresse<input id="set-ical" type="url" placeholder="https://calendar.google.com/calendar/ical/…/private-…/basic.ics" autocomplete="off"></label>
+        <button class="btn" id="save-ical">Lagre</button>
+        <p class="hint">Google Kalender på PC: Innstillinger → velg familiekalenderen → «Integrer kalender» → kopier «Hemmelig adresse i iCal-format».</p>
+        <p class="hint" id="ical-msg" hidden></p>
+      </div>
+      <div class="card stack">
+        <div class="row"><span class="muted">Innlogget</span><span id="set-email"></span></div>
+        <button class="btn ghost danger" id="logout">Logg ut</button>
+      </div>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" hidden></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
