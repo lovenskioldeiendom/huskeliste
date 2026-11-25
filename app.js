@@ -28,7 +28,7 @@ const fail = (e) => toast(e?.message || String(e), 6000);
 
 // ---------- Oppstart ----------
 async function boot() {
-  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {});
   S.store = await createStore();
   S.store.onAuth((u) => { if (!u && S.user) { S.user = null; S.hh = null; show('login'); } });
   S.user = await S.store.user();

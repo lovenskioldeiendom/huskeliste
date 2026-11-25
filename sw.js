@@ -1,5 +1,5 @@
 // Service worker: appen åpner raskt og fungerer med dårlig nett.
-const CACHE = 'huskeliste-v3';
+const CACHE = 'huskeliste-v4';
 const SHELL = ['./', 'index.html', 'styles.css', 'app.js', 'data.js', 'config.js', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/apple-touch-icon.png'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => {
@@ -13,7 +13,7 @@ self.addEventListener('fetch', (e) => {
   e.respondWith((async () => {
     const cache = await caches.open(CACHE);
     if (cdn) { const hit = await cache.match(e.request); if (hit) return hit; const r = await fetch(e.request); if (r.ok) cache.put(e.request, r.clone()); return r; }
-    try { const r = await fetch(e.request); if (r.ok) cache.put(e.request, r.clone()); return r; }
+    try { const r = await fetch(e.request, { cache: 'no-cache' }); if (r.ok) cache.put(e.request, r.clone()); return r; }
     catch { return (await cache.match(e.request)) || (await cache.match('index.html')); }
   })());
 });
