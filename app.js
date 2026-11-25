@@ -296,13 +296,16 @@ function calDays() {
       const s = new Date(ev.start), e = new Date(ev.end);
       if (e < new Date()) continue; // ferdig
       add(dayKey(s), ev);
+      // Avtaler med klokkeslett over flere dager vises også de neste dagene
+      const d = new Date(s); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() + 1);
+      while (d < e && dayKey(d) <= dayKey(new Date(e - 1))) { add(dayKey(d), { ...ev, cont: true }); d.setDate(d.getDate() + 1); }
     }
   }
-  for (const list of days.values()) list.sort((a, b) => (a.allDay ? 0 : 1) - (b.allDay ? 0 : 1) || (a.start < b.start ? -1 : 1));
+  for (const list of days.values()) list.sort((a, b) => (a.allDay || a.cont ? 0 : 1) - (b.allDay || b.cont ? 0 : 1) || (a.start < b.start ? -1 : 1));
   return days;
 }
 const evListHTML = (evs) => `<ul class="cal-list card">${evs.map((ev) => `<li>
-      <span class="cal-time">${ev.allDay ? 'Hele dagen' : hm(new Date(ev.start))}</span>
+      <span class="cal-time">${ev.allDay ? 'Hele dagen' : ev.cont ? `til ${hm(new Date(ev.end))}` : hm(new Date(ev.start))}</span>
       <span class="cal-title">${esc(ev.title)}${ev.location ? `<small>${esc(ev.location)}</small>` : ''}${ev.pending ? '<small class="pend">Lagt til fra appen · venter på Google</small>' : ''}</span>
     </li>`).join('')}</ul>`;
 

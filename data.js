@@ -118,6 +118,7 @@ function createLocalStore() {
         { title: 'Fotballtrening', start: d(0, 17), end: d(0, 18), allDay: false, location: 'Kunstgresset' },
         { title: 'Tannlege', start: d(1, 9), end: d(1, 10), allDay: false, location: '' },
         { title: 'Bursdag mormor', start: day(3), end: day(4), allDay: true, location: '' },
+        { title: 'Kickoff', start: d(5, 17), end: d(6, 18), allDay: false, location: 'Norefjell' },
         { title: 'Juleavslutning', start: d(20, 18), end: d(20, 20), allDay: false, location: 'Skolen' },
         { title: 'Hytta', start: day(30), end: day(33), allDay: true, location: '' },
       ], demo: true };
