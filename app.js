@@ -338,6 +338,45 @@ $('save-ical').onclick = async () => {
 };
 $('logout').onclick = () => logout();
 
+// ---------- Ny avtale (åpner Google Kalender ferdig utfylt) ----------
+$('new-event').onclick = () => {
+  $('event-form').reset();
+  $('ev-date').value = dayKey(new Date());
+  $('ev-times').hidden = false;
+  $('event-dlg').showModal();
+  setTimeout(() => $('ev-title').focus(), 50);
+};
+$('ev-allday').onchange = () => { $('ev-times').hidden = $('ev-allday').checked; };
+$('ev-from').onchange = () => {
+  const [h, m] = $('ev-from').value.split(':').map(Number);
+  if (!isNaN(h)) $('ev-to').value = `${String(Math.min(h + 1, 23)).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+};
+function calendarIdFromIcal(url) {
+  const m = /\/calendar\/ical\/([^/]+)\//.exec(url || '');
+  return m ? decodeURIComponent(m[1]) : '';
+}
+$('event-form').onsubmit = (e) => {
+  e.preventDefault();
+  const date = $('ev-date').value.replaceAll('-', '');
+  let dates;
+  if ($('ev-allday').checked) {
+    const d = new Date($('ev-date').value + 'T12:00:00'); d.setDate(d.getDate() + 1);
+    dates = `${date}/${dayKey(d).replaceAll('-', '')}`;
+  } else {
+    const from = ($('ev-from').value || '12:00').replace(':', '') + '00';
+    let to = ($('ev-to').value || $('ev-from').value || '13:00').replace(':', '') + '00';
+    let endDate = date;
+    if (to <= from) { const d = new Date($('ev-date').value + 'T12:00:00'); d.setDate(d.getDate() + 1); endDate = dayKey(d).replaceAll('-', ''); }
+    dates = `${date}T${from}/${endDate}T${to}`;
+  }
+  const p = new URLSearchParams({ action: 'TEMPLATE', text: $('ev-title').value.trim(), dates, ctz: 'Europe/Oslo' });
+  const loc = $('ev-loc').value.trim(); if (loc) p.set('location', loc);
+  const cal = calendarIdFromIcal(S.hh?.ical_url); if (cal) p.set('src', cal);
+  $('event-dlg').close();
+  S.calLoaded = 0; // hent kalenderen på nytt når du kommer tilbake
+  window.open('https://calendar.google.com/calendar/render?' + p.toString(), '_blank');
+};
+
 boot().catch((e) => {
   show('login');
   $('login-error').textContent = 'Fikk ikke startet appen. Sjekk nettforbindelsen og åpne appen på nytt. (' + (e?.message || e) + ')';

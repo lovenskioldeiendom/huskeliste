@@ -7,7 +7,7 @@ telefon med en gang.
 - **Handle**: skriv inn varer (flere på en gang med komma: «melk, egg, brød»). Trykk for å krysse av.
   Appen foreslår varer dere har kjøpt før.
 - **Gjøre**: samme, for gjøremål.
-- **Kalender**: avtaler fra familiekalenderen de neste tre ukene.
+- **Kalender**: avtaler fra familiekalenderen de neste tre ukene. «+ Ny avtale» åpner Google Kalender med avtalen ferdig utfylt, så du bare trykker Lagre.
 
 Data lagres i samme Supabase-prosjekt som matdagboken (egne tabeller med prefiks `hl_`).
 Hver husstand har en invitasjonskode; bare medlemmer ser lista.

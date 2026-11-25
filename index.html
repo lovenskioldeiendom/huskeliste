@@ -75,6 +75,7 @@
     </div>
 
     <div id="pane-cal" hidden>
+      <button class="btn primary wide" id="new-event">+ Ny avtale</button>
       <div id="cal"></div>
     </div>
   </section>
@@ -108,6 +109,23 @@
         <button class="btn ghost danger" id="logout">Logg ut</button>
       </div>
     </div>
+  </dialog>
+
+  <!-- Ny avtale -->
+  <dialog id="event-dlg" class="sheet">
+    <form method="dialog" class="sheet-head"><h3>Ny avtale</h3><button class="icon-btn" aria-label="Lukk">✕</button></form>
+    <form id="event-form" class="card stack">
+      <label>Hva<input id="ev-title" required maxlength="200" placeholder="F.eks. Fotballkamp"></label>
+      <label>Dato<input id="ev-date" type="date" required></label>
+      <label class="check-row"><input id="ev-allday" type="checkbox"> Hele dagen</label>
+      <div class="two" id="ev-times">
+        <label>Fra<input id="ev-from" type="time" value="17:00"></label>
+        <label>Til<input id="ev-to" type="time" value="18:00"></label>
+      </div>
+      <label>Sted (valgfritt)<input id="ev-loc" maxlength="200"></label>
+      <button class="btn primary" type="submit">Fortsett i Google Kalender</button>
+      <p class="hint">Google Kalender åpnes med avtalen ferdig utfylt. Sjekk at familiekalenderen er valgt, og trykk Lagre.</p>
+    </form>
   </dialog>
 
   <div id="toast" class="toast" hidden></div>
