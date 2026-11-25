@@ -60,7 +60,7 @@ async function createSupabaseStore() {
       if (error) {
         let msg = error.message;
         try { const b = await error.context?.json?.(); if (b?.error) msg = b.error; } catch {}
-        if (/Failed to send|not found|404/i.test(msg)) msg = 'Kalenderfunksjonen er ikke satt opp i Supabase ennå (se README).';
+        if (/Failed to send|not found|404/i.test(msg)) msg = `Fikk ikke kontakt med kalenderfunksjonen «kalender» i Supabase. Sjekk at den er laget og heter akkurat «kalender». (${msg})`;
         throw new Error(msg);
       }
       if (data?.error) throw new Error(data.error);
